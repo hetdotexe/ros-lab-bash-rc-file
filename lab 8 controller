@@ -1,0 +1,242 @@
+Installation Step (Skip this step)
+mkdir kobuki_ws
+cd kobuki_ws/
+mkdir src
+cd src
+sudo apt install git
+git clone https://github.com/kobuki-base/kobuki_ros.git
+git clone https://github.com/kobuki-base/kobuki_ros_interfaces.git
+
+References
+https://github.com/kobuki-base/kobuki_ros
+https://github.com/kobuki-base
+
+Testing Step
+ros2 launch kobuki_node kobuki_node-launch.py
+ros2 run kobuki_keyop kobuki_keyop_node --ros-args -r
+motor_power:=/commands/motor_power cmd_vel:=/commands/velocity
+ros2 topic echo /button
+
+Command Line:
+ros2 topic pub /commands/velocity geometry_msgs/msg/Twist "{linear: {x: 0.1, y: 0.0, z:
+0.0}, angular: {x: 0.0, y: 0.0, z: 0.1}}"
+
+Install Realsense Camera (Skip this step)
+sudo apt-get install ros-humble-realsense2-camera
+sudo apt-get install ros-humble-realsense2-description
+sudo apt-get install librealsense2-dkms
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key
+F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver
+hkp://keyserver.ubuntu.com:80 --recv-key
+F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
+sudo apt-get update
+sudo apt-get install ros-humble-usb-cam
+ros2 launch realsense2_camera rs_launch.py enable_pointcloud:=true device_type:=d435ros2 launch realsense2_camera rs_launch.py enable_pointcloud:=true device_type:=d435
+initial_reset:=true enable_sync:=true --debug
+sudo apt-get install ros-humble-librealsense2
+colcon build
+source ./install/setup.bash
+ros2 launch realsense2_camera rs_launch.py device_type:=d435 initial_reset:=true --
+debug
+sudo apt-get install ros-humble-image-view
+ros2 run image_view image_view image:=/camera/color/image_raw
+or
+cd src
+git clone https://github.com/IntelRealSense/realsense-ros.git
+git checkoutInstall RPLidar (Skip this step)
+cd asha_ws
+cd src
+git clone -b ros2 https://github.com/slamtec/rplidar_ros.git
+cd ..
+colcon build --symlink-install
+source ./install/setup.bash
+ros2 launch rplidar_ros view_rplidar_a3_launch.py
+References:
+https://index.ros.org/repos/page/2/time/
+https://index.ros.org/r/usb_cam/
+https://github.com/allenh1/rplidar_ros
+https://index.ros.org/r/realsense2_camera/
+https://github.com/IntelRealSense/librealsense
+https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md
+https://github.com/klintan/ros2_usb_camera
+https://github.com/Slamtec/rplidar_ros/tree/ros2
+Remotely control Kobuki laptop
+1. Open Visual StudioClick on
+<>
+2. Connect to host
+or add new host3. type
+ssh mahe@172.16.65.49
+(mahe refers to name of the laptop connected too turtlebot)
+(ip address is obtained as
+type ifconfig
+find the IP address
+Address to
+note down4. enter password (robolab)
+File → Open new folder
+select workspacecreate workspace in the home folder
+mkdir -p kobuki_ws/src
+cd kobuki_ws/src
+ros2 pkg create --build-type ament_python turtlebot_pkg --dependencies rclpy
+cd ..
+colcon build
+open kobuki_ws/src/turtlebot_pkg folder in visual studio
+create new file
+name it as goforward
+type the following code
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+class GoForward(Node):
+def __init__(self):
+super().__init__('GoForward')
+self.get_logger().info("To stop, press ctrl + c")
+self.publisher_ = self.create_publisher(Twist, 'commands/velocity', 10)
+self.timer_ = self.create_timer(0.5, self.timer_callback)
+def timer_callback(self):
+msg = Twist()
+msg.linear.x = 0.1
+msg.angular.z = 0.0
+self.publisher_.publish(msg)
+def main(args=None):rclpy.init()
+node = GoForward()
+rclpy.spin(node)
+rclpy.shutdown()
+if __name__ == '__main__':
+main()
+from setuptools import setup
+package_name = 'turtlebot_pkg'
+setup(
+name=package_name,
+version='0.0.0',
+packages=[package_name],
+data_files=[
+('share/ament_index/resource_index/packages',
+['resource/' + package_name]),
+('share/' + package_name, ['package.xml']),
+],
+install_requires=['setuptools'],
+zip_safe=True,
+maintainer='robolab',
+maintainer_email='robolab@todo.todo',
+description='TODO: Package description',
+license='TODO: License declaration',
+tests_require=['pytest'],
+entry_points={
+'console_scripts': [
+'goforward = turtlebot_pkg.goforward:main'
+],
+},
+)cd ~/kobuki_ws
+colcon build
+Terminal 1
+ros2 launch kobuki_node kobuki_node-launch.py
+Terminal 2 (split the terminal)
+ros2 run turtlebot_pkg goforward
+Program 2:
+Generate a square path using turtebot
+#!/usr/bin/env python3
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+import mathimport time
+class DrawSquare(Node):
+def __init__(self):
+super().__init__('draw_square')
+self.get_logger().info("Drawing Square")
+self.publisher_ = self.create_publisher(Twist, 'commands/velocity', 10)
+#self.timer_ = self.create_timer(0.5, self.timer_callback)
+move_vel = Twist()
+move_vel.linear.x = 0.2
+turn_vel = Twist()
+turn_vel.linear.x = 0.0
+turn_vel.angular.z = math.radians(45)
+count = 0
+while(True):
+self.get_logger().info("Going Straiggt")
+for x in range(0,10):
+self.publisher_.publish(move_vel)
+time.sleep(0.5)
+self.get_logger().info("Turning")
+for x in range(0,5):
+self.publisher_.publish(turn_vel)
+time.sleep(0.5)
+count = count+1
+if (count == 4):
+count = 0
+def main(args=None):
+rclpy.init()
+node = DrawSquare()
+rclpy.spin(node)
+rclpy.shutdown()
+if __name__ == '__main__':main()
+from setuptools import setup
+package_name = 'turtlebot_pkg'
+setup(
+name=package_name,
+version='0.0.0',
+packages=[package_name],
+data_files=[
+('share/ament_index/resource_index/packages',
+['resource/' + package_name]),
+('share/' + package_name, ['package.xml']),
+],
+install_requires=['setuptools'],
+zip_safe=True,
+maintainer='robolab',
+maintainer_email='robolab@todo.todo',
+description='TODO: Package description',
+license='TODO: License declaration',
+tests_require=['pytest'],
+entry_points={
+'console_scripts': [
+'goforward = turtlebot_pkg.goforward:main',
+'square = turtlebot_pkg.draw_square:main'
+],
+},
+)
+Check the battery status of the turtlebot
+#!/usr/bin/env python3import rclpy
+from sensor_msgs.msg import BatteryState
+from rclpy.node import Node
+class BatteryStatus(Node):
+def __init__(self):
+super().__init__('battery_status')
+self.subscriber_ =
+self.create_subscription(BatteryState,'sensors/battery_state',self.status_callback, 10)
+def status_callback(self,msg):
+self.get_logger().info("Current Battery Status of the Turtlebot is " +
+str(msg.percentage))
+def main(args=None):
+rclpy.init()
+node = BatteryStatus()
+rclpy.spin(node)
+rclpy.shutdown()
+if __name__ == '__main__':
+main()
+from setuptools import setup
+package_name = 'turtlebot_pkg'
+setup(
+name=package_name,
+version='0.0.0',
+packages=[package_name],
+data_files=[
+('share/ament_index/resource_index/packages',
+['resource/' + package_name]),('share/' + package_name, ['package.xml']),
+],
+install_requires=['setuptools'],
+zip_safe=True,
+maintainer='robolab',
+maintainer_email='robolab@todo.todo',
+description='TODO: Package description',
+license='TODO: License declaration',
+tests_require=['pytest'],
+entry_points={
+'console_scripts': [
+'goforward = turtlebot_pkg.goforward:main',
+'square = turtlebot_pkg.draw_square:main',
+'battery = turtlebot_pkg.battery_status:main'
+],
+},
+)Lidar interfacing
+Depth camera interfacing
